@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="/style.css?version=1">
+
+    <style>
+    html, body {
+        height: 100%;
+        background-image:
+        linear-gradient( 
+            #D1D1D1,
+            #D9D6D4,
+            #E2DFDC,
+            #E2E2E2,
+            #EEECEA,
+            #F9F6F2,
+            #FFFFFF
+        );
+        background-repeat: no-repeat;
+    }
+    </style>
+
+    <title>Todo</title>
+  </head>
+  <body>
+    <div id="background"></div>
+    <div class="container">
+        <br><label for="todo" class="display-4" id="heading">Todo</label> 
+        <form id="form" class="form-group">
+            <div class="row col">
+                <input type="text" class="form-control col" id="todoUserInput" placeholder="Today I will...">
+                <button type="submit" class="btn btn-primary col-auto">Add</button>
+            </div>
+        </form>
+
+        <div class="form-group">
+            <ul class="list-group" id="display"></ul>
+        </div>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    
+    <script>
+        $(document).ready(() => {
+        const display = $("#display");
+        const form = $("#form");
+        const todoUserInput = $("#todoUserInput");
+
+        const getTodos = () => {
+            fetch("/getTodos", { method: "get" }).then((response) => {
+                return response.json();
+            }).then((data) => {
+                console.log(data);
+                displayTodos(data);
+            });
+        }
+
+        getTodos();
+
+        const resetTodosInput = () => {
+            todoUserInput.val("");
+        }
+
+        const editTodo = (todo, todoID, editID) => {
+            let editBtn = $(`#${editID}`);
+            editBtn.click(() => {
+                fetch(`/${todo._id}`, {
+                    method: "put",
+                    headers: {
+                        "Content-Type": "application/json; charset=utf-8"
+                    },
+                    body: JSON.stringify({ todo: todoUserInput.val() })
+                }).then((response) => {
+                    return response.json();
+                }).then((data) => {
+                    if (data.ok == 1) {
+                        let todoIndex = $(`#${todoID}`);
+                        todoIndex.html(data.value.todo);
+                        resetTodosInput();
+                    }
+                })
+            })
+        }
+
+        const deleteTodo = (todo, listItemID, deleteID) => {
+            let deleteBtn = $(`#${deleteID}`);
+            deleteBtn.click(() => {
+                fetch(`/${todo._id}`, {
+                    method: "delete"
+                }).then((response) => {
+                    return response.json();
+                }).then((data) => {
+                    if (data.ok == 1) {
+                        $(`#${listItemID}`).remove();
+                    }
+                });
+            })
+        }
+
+        const buildIDS = (todo) => {
+            return {
+                editID: "edit_" + todo._id,
+                deleteID: "delete_" + todo._id,
+                listItemID: "listItem_" + todo._id,
+                todoID: "todo_" + todo._id
+            }
+        }
+
+        const buildTemplate = (todo, ids) => {
+            return `<li class="list-group-item" id="${ids.listItemID}">
+                        <div class="row">
+                            <div class="col" id="${ids.todoID}">${todo.todo}</div>
+                            <div class="col-auto" >
+                                <button type="button" class="btn btn-outline-secondary col-auto" id="${ids.editID}">Edit</button>
+                                <button type="button" class="btn btn-outline-danger col-auto" id="${ids.deleteID}">Delete</button>
+                            </div>
+                        </div>
+                    </li>`
+        }
+
+        const displayTodos = (data) => {
+            data.forEach((todo) => {
+                let ids = buildIDS(todo);
+                display.append(buildTemplate(todo, ids));
+                editTodo(todo, ids.todoID, ids.editID);
+                deleteTodo(todo, ids.listItemID, ids.deleteID);
+            });
+        }
+
+        form.submit((e) => {
+            e.preventDefault();
+            fetch("/", {
+                method: "post",
+                body: JSON.stringify({ todo: todoUserInput.val() }),
+                headers: {
+                    "Content-Type": "application/json; charset=utf-8"
+                }
+            }).then((response) => {
+                return response.json();
+            }).then((data) => {
+                if (data.result.ok == 1 && data.result.n == 1) {
+                    let ids = buildIDS(data.document);
+                    display.append(buildTemplate(data.document, ids));
+                    editTodo(data.document, ids.todoID, ids.editID);
+                    deleteTodo(data.document, ids.listItemID, ids.deleteID);
+                }
+                resetTodosInput();
+            });
+        })
+    });
+    </script>
+  </body>
+</html>
